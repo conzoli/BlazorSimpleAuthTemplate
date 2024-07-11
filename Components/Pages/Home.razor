@@ -1,0 +1,109 @@
+﻿@page "/"
+
+@rendermode InteractiveServer
+
+@implements IAsyncDisposable
+
+@inject IJSRuntime JS
+@inject IHttpClientFactory HttpClientFacory
+
+
+<PageTitle>Home</PageTitle>
+
+<div class="row">
+    <div class="col-12">
+        <h2 class="fw-bolder">Welcome <span class="text-danger">to BlazorSimpleAuthTemplate</span></h2>
+    </div>
+
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <AuthorizeView>
+                    <NotAuthorized>
+                        <span>You are not logged in. Please <a class="fw-bolder" href="/login" >click here</a> to login!</span>
+                    </NotAuthorized>
+                    <Authorized>
+                        <span>You are logged in as <b>@context.User.Identity!.Name</b>. <a class="fw-bolder" href="/logout" >Click here</a> to logout.</span>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<h3>Calling Web-Api</h3>
+
+<br />
+
+<button type="button" class="btn btn-primary"  @onclick="() => MakeCallAsnc()">Make Blazor Call</button> <text>&nbsp;</text>
+<button type="button" class="btn btn-secondary"  @onclick="() => MakeApiCallAsnc()">Make HttpClient Call</button><text>&nbsp;</text>
+<button type="button" class="btn btn-info"  @onclick="() => MakeJsApiCallAsnc()">Make API Call in JS</button> 
+
+
+@if(HeloMsg is not null)
+{
+    <br />
+    <br />
+
+    <span>Message:</span> <span class="text-danger">@HeloMsg</span>
+    <br />
+    <br />
+}
+
+
+@code {
+
+    public string? HeloMsg { get; set; }
+
+    private IJSObjectReference? module;
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+
+        if (firstRender)
+        {
+            module = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./Components/Pages/Home.razor.js");
+
+        }
+
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        if (module is not null)
+        {
+            await module.DisposeAsync();
+        }
+    }
+
+
+    public async Task MakeCallAsnc()
+    {
+        
+        HeloMsg = "Hallo Welt";
+
+        await Task.FromResult(0);
+    }
+
+    public async Task MakeApiCallAsnc()
+    {
+
+        var Http = HttpClientFacory.CreateClient("local");
+       
+
+        //HeloMsg = await Http.GetFromJsonAsync<string>("/api/v1/hello");
+
+        HeloMsg = await Http.GetStringAsync("/api/v1/hello");
+
+    }
+
+    public async Task MakeJsApiCallAsnc()
+    {
+
+        HeloMsg = await module!.InvokeAsync<string>("FetchData");
+    }
+
+}

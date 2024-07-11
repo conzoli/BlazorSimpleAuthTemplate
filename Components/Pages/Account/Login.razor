@@ -1,0 +1,92 @@
+@page "/login"
+
+@using BlazorSimpleAuthTemplate.Models.ViewModels
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+
+
+@inject IUserAccountService UserAccountService
+@inject NavigationManager NavigationManager
+
+<div class="row">
+    <div class="col-lg-4 offset-lg-4 pt-4 pb-4 border">
+
+        <EditForm Model="@Model" OnValidSubmit="Authenticate" FormName="LoginForm" >
+
+            <DataAnnotationsValidator />
+
+            <div class="mb-3 text-center flex-column">
+
+                <img src="/images/avatar.png" style="max-height: 5rem;" />
+                <h3>LOGIN</h3>
+
+            </div>
+
+            <div class="mb-3">
+                <label>User Name</label>
+                <InputText @bind-Value="@Model.UserName" class="form-control" placeholder="Username" />
+                <ValidationMessage For="() => Model.UserName" />
+            </div>
+
+            <div class="mb-3">
+                <label>Password</label>
+                <InputText @bind-Value="@Model.Password" class="form-control" placeholder="Password" type="password" />
+                <ValidationMessage For="() => Model.Password" />
+            </div>
+
+            <div class="mb-3 text-center">
+                <span class="text-danger">@errorMessage</span>
+            </div>
+            <div class="mb-3 d-grid gap-2">
+                <button type="submit" class="btn btn-primary">Login</button>
+            </div>
+
+        </EditForm>
+
+    </div>
+</div>
+
+
+
+
+@code{
+
+    [CascadingParameter]
+    public HttpContext? HttpContext { get; set; }
+
+    [SupplyParameterFromForm]
+    public LoginViewModel Model { get; set; } = new ();
+
+    private string? errorMessage;
+
+
+    private async Task Authenticate()
+    {
+
+        var UserList = await UserAccountService.GetAccountsAsync();
+
+        var uesrAccount = UserList.Where( x => x.UserName == Model.UserName).FirstOrDefault();
+
+        if (uesrAccount is null || uesrAccount.Password != Model.Password)
+        {
+            errorMessage = "Invalid User Name or Password";
+            return;
+        }
+
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, uesrAccount.UserName!),
+            new Claim(ClaimTypes.Role, uesrAccount.Role!)
+        };
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+        await HttpContext!.SignInAsync(principal);
+
+
+        NavigationManager.NavigateTo("/");
+
+    }
+
+}        
